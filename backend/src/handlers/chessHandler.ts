@@ -5,7 +5,6 @@ import indexByWs from "../utils/indexByWs"
 import matchmake from "../GameLogic/chess/matchmake"
 
 export default function chessHandler(packet: Packet, ws: WebSocket, usersConnected: Connection[]) {
-  console.log(packet)
   const i = indexByWs(ws, usersConnected)
 
   if (i === -1) {
@@ -38,9 +37,20 @@ export default function chessHandler(packet: Packet, ws: WebSocket, usersConnect
       action: "getGamestate",
       payload: payload
     }
+
   } else if (packet.action === "move") {
-    usersConnected[i].chess.game?.validateChessMove(usersConnected[i].id, packet.payload)
-    usersConnected[i].chess.game?.broadcastGamestate()
+    const game = usersConnected[i].chess.game
+    if (game !== null) {
+      game.validateChessMove(usersConnected[i].id, packet.payload)
+      game.broadcastGamestate()
+
+      if (game.winner) {
+        let i  = indexByWs(game.player1.ws, usersConnected)
+        usersConnected[i].chess.game = null
+        i  = indexByWs(game.player2.ws, usersConnected)
+        usersConnected[i].chess.game = null
+      }
+    }
   }
 
   if (!returnPacket) {
