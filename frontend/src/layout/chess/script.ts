@@ -23,6 +23,7 @@ export interface GameInterface {
   pieces: Piece[]
   player1: Player
   player2: Player
+  winner: number
 }
 
 interface Mouse {
@@ -58,6 +59,7 @@ export class GameClass {
     this.width = Math.min(window.innerWidth, window.innerHeight)*0.9
     this.cellWidth = this.width/8
 
+
     if (this.gamestate.player1.id === ws.id) {
       this.player = this.gamestate.player1
     } else {
@@ -82,7 +84,7 @@ export class GameClass {
 
     this.preloadImages()
     this.initEventListeners()
-    this.animate()
+    this.draw()
   }
 
   handler(packet: Packet) {
@@ -97,6 +99,18 @@ export class GameClass {
       } else {
         this.player = this.gamestate.player2
       }
+
+      if (this.gamestate.winner) {
+        if (this.gamestate.winner === -1) {
+          console.log("Draw")
+        } else if (this.player.id === this.gamestate.winner) {
+          console.log("Won")
+        } else {
+          console.log("Lost")
+        }
+      }
+
+      this.draw()
     }
   }
 
@@ -123,6 +137,7 @@ export class GameClass {
       colors.forEach((color:string) => {
         const img = new Image()
         img.src = process.env.PUBLIC_URL + "/chess_pieces/" + color + piece + ".png"
+        img.onload = () => this.draw()
         this.pieceImages[color + piece] = img
       })
     })
@@ -170,9 +185,11 @@ export class GameClass {
             x:this.reverseValue(x),
             y:this.reverseValue(y),
           }
+          this.mouse.pieceToMove.pos = {x: x, y:y}
         } else  {
           oldPos = this.mouse.pieceToMove.pos
           newPos = {x:x,y:y}
+          this.mouse.pieceToMove.pos = newPos
         }
 
         this.ws.send("chess-move", {oldPos: oldPos, newPos: newPos})
@@ -232,9 +249,16 @@ export class GameClass {
   drawPossibleMoves(piece: Piece) {
     piece.legalMoves.forEach(move => {
       this.context.beginPath()
-      this.context.fillStyle = "gray"
-      this.context.arc(move.x*this.cellWidth + this.cellWidth/2, move.y*this.cellWidth + this.cellWidth/2, this.cellWidth/5, 0, Math.PI*2)
-      this.context.fill()
+      if (this.checkCollision(move.x*this.cellWidth,move.y*this.cellWidth) !== -1) {
+        this.context.lineWidth = 5
+        this.context.strokeStyle = "gray"
+        this.context.arc(move.x*this.cellWidth + this.cellWidth/2, move.y*this.cellWidth + this.cellWidth/2, this.cellWidth/2.2, 0, Math.PI*2)
+        this.context.stroke()
+      } else {
+        this.context.fillStyle = "gray"
+        this.context.arc(move.x*this.cellWidth + this.cellWidth/2, move.y*this.cellWidth + this.cellWidth/2, this.cellWidth/5, 0, Math.PI*2)
+        this.context.fill()
+      }
       this.context.closePath()
     })
   }
@@ -264,6 +288,8 @@ export class GameClass {
 
   animate() {
     this.draw()
-    requestAnimationFrame(() => this.animate())
+    if (this.mouse.pieceToMove && this.mouse.pressed) {
+      requestAnimationFrame(() => this.animate())
+    }
   }
 }
