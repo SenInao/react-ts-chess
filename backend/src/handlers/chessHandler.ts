@@ -28,6 +28,9 @@ export default function chessHandler(packet: Packet, ws: WebSocket, usersConnect
     matchmake()
 
   } else if (packet.action === "getGamestate") {
+    if (!usersConnected[i].chess.game) {
+      throw new Error("not in game")
+    }
     const payload = JSON.parse(JSON.stringify(usersConnected[i].chess.game))
     delete payload.player1.ws
     delete payload.player2.ws

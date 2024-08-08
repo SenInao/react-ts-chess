@@ -10,7 +10,7 @@ interface WsRequest {
 
 export interface Packet {
   id: number
-  action: String,
+  action: String
   payload: any
 }
 
@@ -21,6 +21,7 @@ class WS {
   state : number
   pendingRequests : WsRequest[]
   defaultHandler : (packet: Packet) => void
+  onOpenCall : () => void
 
   constructor(url:string) {
     this.url = url
@@ -28,6 +29,7 @@ class WS {
     this.pendingRequests = []
     this.defaultHandler = () => {}
     this.id = -1
+    this.onOpenCall = () => {}
 
     this.connect()
   };
@@ -38,6 +40,7 @@ class WS {
     this.ws.onopen = () => {
       this.state = CONNECTED
       this.send("register", {}, (packet:Packet) => {this.id = packet.payload.id})
+      this.onOpenCall()
     }
 
     this.ws.onerror = () => {

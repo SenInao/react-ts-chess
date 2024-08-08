@@ -32,6 +32,5 @@ export default function handler(packet: Packet, ws: WebSocket, usersConnected: C
     }
 
     ws.send(JSON.stringify(returnPacket))
-    console.log(error)
   }
 }

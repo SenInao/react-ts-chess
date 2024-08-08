@@ -1,5 +1,4 @@
 import { checkDiagonals, checkHorizontalDir, checkVerticalDir } from "../../utils/chess/checkMoves"
-import checkPos from "../../utils/chess/checkPos"
 import posInList from "../../utils/chess/posInList"
 import Game from "./Game"
 
@@ -47,25 +46,25 @@ export class Pawn extends Piece {
     var legalMoves: Pos[] = []
 
     let posToCheck : Pos = {x: this.pos.x, y:this.pos.y+this.moveDir}
-    if (checkPos(posToCheck, game) === -1) {
+    if (!game.board[posToCheck.y][posToCheck.x]) {
       legalMoves.push(posToCheck)
 
       posToCheck = {x: posToCheck.x, y: posToCheck.y}
       posToCheck.y += this.moveDir
-      if (checkPos(posToCheck, game) === -1 && this.firstMove) {
+      if (!game.board[posToCheck.y][posToCheck.x] && this.firstMove) {
         legalMoves.push(posToCheck)
       }
     }
 
     posToCheck = {x: this.pos.x-1, y: this.pos.y+this.moveDir}
-    let i = checkPos(posToCheck, game)
-    if (i !== -1 && game.pieces[i].white !== this.white) {
+    var piece = game.board[posToCheck.y][posToCheck.x]
+    if (piece && piece.white !== this.white) {
       legalMoves.push(posToCheck)
     }
 
     posToCheck = {x: this.pos.x+1, y: this.pos.y+this.moveDir}
-    i = checkPos(posToCheck, game)
-    if (i !== -1 && game.pieces[i].white !== this.white) {
+    var piece = game.board[posToCheck.y][posToCheck.x]
+    if (piece && piece.white !== this.white) {
       legalMoves.push(posToCheck)
     }
 
@@ -85,6 +84,7 @@ export class Pawn extends Piece {
       posToCheck.y+=this.moveDir
       legalMoves.push(posToCheck)
     }
+
     posToCheck = {x: this.pos.x-1, y: this.pos.y}
     if (this.checkEnPassant(posToCheck, game)) {
       posToCheck.specialMove = "enpassant"
@@ -94,9 +94,10 @@ export class Pawn extends Piece {
   } 
 
   checkEnPassant(pos: Pos, game: Game) {
-    const i = checkPos(pos, game)
-    if (i !== -1 && game.pieces[i].white !== this.white) {
-      if (game.previousPos.pieces[i].firstMove) {
+    const piece = game.board[pos.y][pos.x]
+    if (piece && piece.white !== this.white) {
+      const lastPos = game.previousPos[pos.y+this.moveDir*2][pos.x]
+      if (lastPos && lastPos.firstMove) {
         return true
       }
     }
@@ -124,22 +125,26 @@ export class King extends Piece {
     ]
 
     moves.forEach(move => {
-      const posToCheck = {x: this.pos.x + move.x, y: this.pos.y + move.y}
+      const posToCheck : Pos = {x: this.pos.x + move.x, y: this.pos.y + move.y}
       if (posToCheck.x > 7 || posToCheck.x < 0 || posToCheck.y > 7 || posToCheck.y < 0) {
         return
       }
 
-      const i = checkPos(posToCheck, game)
-      if (i !== -1) {
-        if (game.pieces[i].white === this.white) {
+      let piece = game.board[posToCheck.y][posToCheck.x]
+      if (piece) {
+        if (piece.white === this.white) {
           return
         }
       }
 
-      for (let a = 0; a < game.pieces.length; a++) {
-        if (game.pieces[a].white === this.white) continue
-        if (posInList(posToCheck, game.pieces[a].legalMoves)) {
-          return
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          piece = game.board[y][x]
+          if (!piece) continue
+          if (piece.white === this.white) continue
+          if (posInList(posToCheck, piece.legalMoves)) {
+            return
+          }
         }
       }
 
@@ -162,20 +167,25 @@ export class King extends Piece {
   kingSideCastle(game: Game){
     if (this.firstMove) {
       for (let x = this.pos.x+1; x < 7; x++) {
-        if (checkPos({x: x, y: this.pos.y}, game) !== -1) {
+        if (game.board[this.pos.y][x]) {
           return false
         }
-        for (let i = 0; i < game.pieces.length; i++) {
-          if (game.pieces[i].white === this.white) continue
+        for (let yPos = 0; yPos < 8; yPos++) {
+          for (let xPos = 0; xPos < 8; xPos++) {
+            const piece = game.board[yPos][xPos]
+            if (!piece) continue
+            
+            if (piece.white === this.white) continue
 
-          if (posInList({x: x, y: this.pos.y}, game.pieces[i].legalMoves)) {
-            return false
-          } 
+            if (posInList({x: x, y: this.pos.y}, piece.legalMoves)) {
+              return false
+            } 
+          }
         }
       }
 
-      const i = checkPos({x: 7, y: this.pos.y}, game)
-      if (i !== -1 && game.pieces[i].firstMove) {
+      const piece = game.board[this.pos.y][7]
+      if (piece && piece.firstMove) {
         return true
       }
     }
@@ -186,19 +196,25 @@ export class King extends Piece {
   queenSideCastle(game: Game) {
     if (this.firstMove) {
       for (let x = this.pos.x-1; x > 0; x--) {
-        if (checkPos({x: x, y: this.pos.y}, game) !== -1) {
+        if (game.board[this.pos.y][x]) {
           return false
         }
-        for (let i = 0; i < game.pieces.length; i++) {
-          if (game.pieces[i].white === this.white) continue
 
-          if (posInList({x: x, y: this.pos.y}, game.pieces[i].legalMoves)) {
-            return false
-          } 
+        for (let yPos = 0; yPos < 8; yPos++) {
+          for (let xPos = 0; xPos < 8; xPos++) {
+            const piece = game.board[yPos][xPos]
+            if (!piece) continue
+            
+            if (piece.white === this.white) continue
+
+            if (posInList({x: x, y: this.pos.y}, piece.legalMoves)) {
+              return false
+            } 
+          }
         }
       }
-      const i = checkPos({x: 0, y: this.pos.y}, game)
-      if (i !== -1 && game.pieces[i].firstMove) {
+      const piece = game.board[this.pos.y][0]
+      if (piece && piece.firstMove) {
         return true
       }
     }
@@ -275,9 +291,9 @@ export class Knight extends Piece {
       if (posToCheck.x > 7 || posToCheck.x < 0 || posToCheck.y > 7 || posToCheck.y < 0) {
         return
       }
-      const i = checkPos(posToCheck, game)
-      if (i !== -1) {
-        if (game.pieces[i].white !== this.white) {
+      const piece = game.board[posToCheck.y][posToCheck.x]
+      if (piece) {
+        if (piece.white !== this.white) {
           legalMoves.push(posToCheck)
         }
       } else {

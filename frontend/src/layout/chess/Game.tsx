@@ -3,13 +3,20 @@ import { Packet } from "../../ws/ws"
 import { WsContext } from "../../ws/WsContext"
 import {GameInterface, GameClass} from "./script"
 import "./gamestyle.css"
+import { useNavigate } from "react-router-dom"
 
 const Game: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gamestate, setGamestate] = useState<GameInterface | null>(null)
   const wsContext = useContext(WsContext)
+  const navigate = useNavigate()
 
   function callback(packet: Packet) {
+    if (!packet.payload.status) {
+      navigate("/")
+      return
+    }
+
     const gamestate = packet.payload
     setGamestate(gamestate)
     if (!canvasRef.current) return
@@ -22,7 +29,13 @@ const Game: React.FC = () => {
 
   useEffect(() => {
     if (!ws) return
-    ws.send("chess-getGamestate", {}, callback)
+    if (!ws.state) {
+      ws.onOpenCall = () => {
+        ws.send("chess-getGamestate", {}, callback)
+      }
+    } else {
+      ws.send("chess-getGamestate", {}, callback)
+    }
   }, [])
 
   if (!wsContext) {

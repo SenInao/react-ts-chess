@@ -20,7 +20,7 @@ interface Player {
 }
 
 export interface GameInterface {
-  pieces: Piece[]
+  board: (Piece | null)[][]
   player1: Player
   player2: Player
   winner: number
@@ -115,15 +115,26 @@ export class GameClass {
   }
 
   reverseBoard() {
-    this.gamestate.pieces.forEach(piece => {
-      piece.pos.x = Math.abs(piece.pos.x - 7)
-      piece.pos.y = Math.abs(piece.pos.y - 7)
+    const newArr : (Piece | null)[][] = Array.from({length:8}, () => Array(8).fill(null))
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const piece = this.gamestate.board[y][x]
+        if (!piece) continue
 
-      piece.legalMoves.forEach(move => {
-        move.x = this.reverseValue(move.x)
-        move.y = this.reverseValue(move.y)
-      })
-    })
+        piece.pos.x = this.reverseValue(piece.pos.x)
+        piece.pos.y = this.reverseValue(piece.pos.y)
+
+
+        newArr[piece.pos.y][piece.pos.x] = piece
+
+        piece.legalMoves.forEach(move => {
+          move.x = this.reverseValue(move.x)
+          move.y = this.reverseValue(move.y)
+        })
+      }
+    }
+
+    this.gamestate.board = newArr
   }
 
   reverseValue(value: number) {
@@ -152,10 +163,10 @@ export class GameClass {
       this.mouse.y = event.clientY - canvasRect.top
       this.mouse.pressed = true
 
-      const i = this.checkCollision(this.mouse.x, this.mouse.y)
-      if (i !== -1) {
-        if (this.player.white === this.gamestate.pieces[i].white) {
-          this.mouse.pieceToMove = this.gamestate.pieces[i]
+      const piece = this.checkCollision(this.mouse.x, this.mouse.y)
+      if (piece) {
+        if (this.player.white === piece.white) {
+          this.mouse.pieceToMove = piece
           this.animate()
         }
       }
@@ -168,9 +179,9 @@ export class GameClass {
       this.mouse.y = event.clientY - canvasRect.top
       this.mouse.pressed = false
 
-      const i = this.checkCollision(this.mouse.x, this.mouse.y)
+      const piece = this.checkCollision(this.mouse.x, this.mouse.y)
 
-      if ((i === -1 || this.gamestate.pieces[i].white !== this.player.white) && this.mouse.pieceToMove) {
+      if ((!piece || piece.white !== this.player.white) && this.mouse.pieceToMove) {
         const x = Math.floor(this.mouse.x/this.cellWidth)
         const y = Math.floor(this.mouse.y/this.cellWidth)
         var oldPos
@@ -233,23 +244,45 @@ export class GameClass {
   }
 
   drawPieces() {
-    this.gamestate.pieces.forEach(piece => {
-      var fc = piece.white? "W" : "B"
-      var image = this.pieceImages[fc + piece.type]
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const piece = this.gamestate.board[row][col];
+        if (!piece || piece === this.mouse.pieceToMove) continue;
 
-      if (this.mouse.pieceToMove === piece) {
-        this.drawPossibleMoves(piece)
-        this.context.drawImage(image, this.mouse.x - this.cellWidth/2,this.mouse.y - this.cellWidth/2, this.cellWidth,this.cellWidth)
-      } else {
-        this.context.drawImage(image, piece.pos.x*this.cellWidth,piece.pos.y*this.cellWidth, this.cellWidth,this.cellWidth)
+        const img = this.pieceImages[(piece.white ? "W" : "B") + piece.type];
+        this.context.drawImage(
+          img,
+          piece.pos.x * this.cellWidth,
+          piece.pos.y * this.cellWidth,
+          this.cellWidth,
+          this.cellWidth
+        );
       }
-    })
+    }
+  }
+
+  drawDraggedPiece() {
+    if (this.mouse.pieceToMove) {
+      const piece = this.mouse.pieceToMove;
+      const img = this.pieceImages[(piece.white ? "W" : "B") + piece.type];
+
+      this.context.beginPath();
+      this.drawPossibleMoves(piece); // Draw possible moves first
+      this.context.drawImage(
+        img,
+        this.mouse.x - this.cellWidth / 2,
+        this.mouse.y - this.cellWidth / 2,
+        this.cellWidth,
+        this.cellWidth
+      );
+      this.context.closePath();
+    }
   }
 
   drawPossibleMoves(piece: Piece) {
     piece.legalMoves.forEach(move => {
       this.context.beginPath()
-      if (this.checkCollision(move.x*this.cellWidth,move.y*this.cellWidth) !== -1) {
+      if (this.checkCollision(move.x*this.cellWidth,move.y*this.cellWidth)) {
         this.context.lineWidth = 5
         this.context.strokeStyle = "gray"
         this.context.arc(move.x*this.cellWidth + this.cellWidth/2, move.y*this.cellWidth + this.cellWidth/2, this.cellWidth/2.2, 0, Math.PI*2)
@@ -263,29 +296,18 @@ export class GameClass {
     })
   }
 
-  checkCollision(x: number, y: number) {
-    for (let i = 0; i < this.gamestate.pieces.length; i++) {
-      const piece = this.gamestate.pieces[i];
-      const pieceX = piece.pos.x * this.cellWidth;
-      const pieceY = piece.pos.y * this.cellWidth;
-
-      if (
-        x >= pieceX && x < pieceX + this.cellWidth &&
-          y >= pieceY && y < pieceY + this.cellWidth
-      ) {
-        return i;
-      }
-    }
-
-    return -1;
+  checkCollision(xPos: number, yPos: number) {
+    const x = Math.floor(xPos/this.cellWidth)
+    const y = Math.floor(yPos/this.cellWidth)
+    return this.gamestate.board[y][x]
   }
 
   draw() {
-    this.context.clearRect(0,0, this.width, this.width)
-    this.drawBoard()
-    this.drawPieces()
-  }
-
+  this.context.clearRect(0, 0, this.width, this.width);
+  this.drawBoard();
+  this.drawPieces();
+  this.drawDraggedPiece();
+}
   animate() {
     this.draw()
     if (this.mouse.pieceToMove && this.mouse.pressed) {
