@@ -3,25 +3,25 @@ import Player from "../../models/chess/Player";
 import { Connection } from "../../server";
 import {tenMinQeue, fiveMinQeue, threeMinQeue, games} from "./../../states/chess/state"
 
-export default function matchmake() {
+export default function matchmake(connections: Connection[]) {
   if (threeMinQeue.length >= 2) {
-    createGame(threeMinQeue[0], threeMinQeue[1])
+    createGame(threeMinQeue[0], threeMinQeue[1], 3, connections)
   } 
 
   if (fiveMinQeue.length >= 2) {
-    createGame(fiveMinQeue[0], fiveMinQeue[1])
+    createGame(fiveMinQeue[0], fiveMinQeue[1], 5, connections)
   } 
 
   if (tenMinQeue.length >= 2) {
-    createGame(tenMinQeue[0], tenMinQeue[1])
+    createGame(tenMinQeue[0], tenMinQeue[1], 10, connections)
   }
 }
 
-function createGame(connection1: Connection, connection2: Connection) {
+function createGame(connection1: Connection, connection2: Connection, duration: number, connections: Connection[]) {
   const white = Math.floor(Math.random())
   const player1 = new Player(connection1, white === 0)
   const player2 = new Player(connection2, white === 1)
-  const game = new Game(player1, player2)
+  const game = new Game(player1, player2, duration, connections)
 
   connection1.chess.inQeue = false
   connection2.chess.inQeue = false

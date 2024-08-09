@@ -17,6 +17,7 @@ interface Player {
   turn : boolean
   white : boolean
   id : number
+  clock : number
 }
 
 export interface GameInterface {
@@ -46,6 +47,7 @@ export class GameClass {
   mouse : Mouse
   pieceImages: { [key: string]: HTMLImageElement }
   player : Player
+  opponent : Player
 
   constructor(ws: WS, gamestate: GameInterface, context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
     this.ws = ws
@@ -62,8 +64,10 @@ export class GameClass {
 
     if (this.gamestate.player1.id === ws.id) {
       this.player = this.gamestate.player1
+      this.opponent = this.gamestate.player2
     } else {
       this.player = this.gamestate.player2
+      this.opponent = this.gamestate.player1
     }
 
     if (!this.player.white) {
@@ -90,15 +94,19 @@ export class GameClass {
   handler(packet: Packet) {
     if (packet.action === "chess-gameState") {
       this.gamestate = packet.payload
+
       if (!this.player.white) {
         this.reverseBoard()
       }
       
       if (this.gamestate.player1.id === this.ws.id) {
         this.player = this.gamestate.player1
+        this.opponent = this.gamestate.player2
       } else {
         this.player = this.gamestate.player2
+        this.opponent = this.gamestate.player1
       }
+
 
       if (this.gamestate.winner) {
         if (this.gamestate.winner === -1) {
@@ -111,6 +119,13 @@ export class GameClass {
       }
 
       this.draw()
+
+    } else if (packet.action === "chess-timerUpdate") {
+      if (packet.payload.player === this.player.id) {
+        this.player.clock = packet.payload.time
+      } else {
+        this.opponent.clock = packet.payload.time
+      }
     }
   }
 

@@ -1,10 +1,11 @@
-import { useContext } from "react"
+import { useContext, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { WsContext } from "../../ws/WsContext"
-import { Packet } from "../../ws/ws"
 import "./style.css"
 
 const Chess:React.FC = () => {
+  const [matchmaking, setMatchmaking] = useState<boolean>(false)
+
   const navigate = useNavigate()
   const wsContext = useContext(WsContext)
   if (!wsContext) {
@@ -15,14 +16,30 @@ const Chess:React.FC = () => {
   if (ws) {
     ws.defaultHandler = handler
   }
+
+  function cancelMatchmake() {
+    if (!ws) return
+    ws.send("chess-matchmakeCancel", {})
+    setMatchmaking(false)
+  }
   
   function matchmake(min: number) {
     if (!ws) return
     ws.send("chess-matchmake", {min: min})
+    setMatchmaking(true)
   }
 
-  function handler(packet: Packet) {
+  function handler() {
     navigate("/chess/game")
+  }
+
+  if (matchmaking) {
+    return (
+      <div className="matchmaking">
+        <h1>Matchmaking ...</h1>
+        <button onClick={() => cancelMatchmake()}>Cancel</button>
+      </div>
+    )
   }
 
   return (

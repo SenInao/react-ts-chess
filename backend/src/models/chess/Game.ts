@@ -1,8 +1,11 @@
+import { Connection } from "../../server";
 import { Packet } from "../../server";
+import broadcast from "../../utils/broadcast";
 import posInList from "../../utils/chess/posInList";
 import Piece, { Bishop, King, Knight, Pawn, Pos, Queen, Rook } from "./Piece";
 import Player from "./Player";
 import cloneDeep from "lodash/cloneDeep"
+import indexByWs from "../../utils/indexByWs";
 
 interface Move {
   oldPos : Pos
@@ -14,17 +17,20 @@ export default class Game {
   player1: Player
   player2: Player
   board: (Piece | null)[][] = Array.from({length: 8}, () => Array(8).fill(null))
-  winner: number
   previousPos : (Piece | null)[][] = Array.from({length: 8}, () => Array(8).fill(null))
+  winner: number
+  connections : Connection[]
 
-
-  constructor(player1: Player, player2: Player) {
+  constructor(player1: Player, player2: Player, gameDuration : number, connections: Connection[]) {
+    this.connections = connections
     this.player1 = player1
     this.player2 = player2
     this.winner = 0
 
     player1.inGame = true
     player2.inGame = true
+    player1.clock = gameDuration
+    player2.clock = gameDuration
 
     this.previousPos = cloneDeep(this.board)
 
@@ -35,14 +41,14 @@ export default class Game {
   }
 
   broadcastGamestate() {
-    const payload = JSON.parse(JSON.stringify(this))
-    delete payload.player1.ws
-    delete payload.player2.ws
+    this.broadcast("gameState", this.gameState())
+  }
 
+  broadcast(action: string, message: any) {
     const packet: Packet = {
       id: -1,
-      action: "chess-gameState",
-      payload: payload
+      action: "chess-" + action,
+      payload: message
     }
 
     this.player1.ws.send(JSON.stringify(packet))
@@ -181,16 +187,23 @@ export default class Game {
     this.player1.turn = !this.player1.turn
     this.player2.turn = !this.player2.turn
 
+    if (this.player1.turn) {
+      this.player1.startTimer(this)
+      this.player2.stopTimer()
+    } else {
+      this.player2.startTimer(this)
+      this.player1.stopTimer()
+    }
+
     this.updateLegalMoves()
     opponent.inCheck = this.checkCheck(this.board, opponent.king)
 
     if (this.checkMate(opponent)) {
       this.winner = player.id
-
-    } else {
-      if (this.checkDraw(opponent)) {
-        this.winner = -1
-      }
+      this.endGame()
+    } else if (this.checkDraw(opponent)){
+      this.winner = -1
+      this.endGame()
     }
   }
 
@@ -208,6 +221,38 @@ export default class Game {
       return {player: this.player1, opponent: this.player2}
     }
     return {player: this.player2, opponent: this.player1}
+  }
+
+  gameState() {
+    const player1 = {
+      turn: this.player1.turn,
+      id: this.player1.id,
+      white: this.player1.white,
+      clock: this.player1.clock
+    }
+    const player2 = {
+      turn: this.player2.turn,
+      id: this.player2.id,
+      white: this.player2.white,
+      clock: this.player2.clock
+    }
+    return {
+      board: this.board,
+      player1: player1,
+      player2: player2,
+      winner: this.winner
+    }
+  }
+
+  endGame() {
+    let i  = indexByWs(this.player1.ws, this.connections)
+    this.connections[i].chess.game = null
+    this.connections[i].chess.inGame = false
+    i  = indexByWs(this.player2.ws, this.connections)
+    this.connections[i].chess.game = null
+    this.connections[i].chess.inGame = false
+
+    this.broadcastGamestate()
   }
 
   createPieces() {

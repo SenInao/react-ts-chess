@@ -25,6 +25,7 @@ export default function handler(packet: Packet, ws: WebSocket, usersConnected: C
     }
 
   } catch (error: any) {
+    console.log(error)
     const returnPacket: Packet = {
       id: packet.id,
       action: packet.action,

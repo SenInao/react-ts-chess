@@ -1,6 +1,7 @@
 import { WebSocket } from "ws"
 import { Connection } from "../../server"
 import Piece from "./Piece"
+import Game from "./Game"
 
 export default class Player {
   id: number
@@ -11,6 +12,8 @@ export default class Player {
   inQeue : boolean
   king: Piece
   inCheck : boolean
+  clock : number
+  timerId : number | undefined | NodeJS.Timeout
 
   constructor(connection: Connection, white: boolean) {
     this.id = connection.id
@@ -21,5 +24,29 @@ export default class Player {
     this.inQeue = false
     this.king = new Piece(0,0,true)
     this.inCheck = false
+    this.clock = 0
+  }
+
+  startTimer(game: Game) {
+    this.timerId = setInterval(() => {
+      this.clock--
+      game.broadcast("timerUpdate", {player: this.id, time : this.clock})
+      
+      if (this.clock <= 0) {
+        if (game.player1.id === this.id) {
+          game.winner = game.player2.id
+        } else {
+          game.winner = game.player1.id
+        }
+        game.endGame()
+        clearInterval(this.timerId)
+        this.timerId = undefined
+      }
+    }, 1000)
+  }
+
+  stopTimer() {
+    clearInterval(this.timerId)
+    this.timerId = undefined
   }
 }

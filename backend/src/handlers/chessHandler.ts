@@ -3,6 +3,7 @@ import { threeMinQeue, fiveMinQeue, tenMinQeue, games} from "../states/chess/sta
 import { WebSocket } from "ws"
 import indexByWs from "../utils/indexByWs"
 import matchmake from "../GameLogic/chess/matchmake"
+import { removeConnectionFromList } from "../utils/removeConnection"
 
 export default function chessHandler(packet: Packet, ws: WebSocket, usersConnected: Connection[]) {
   const i = indexByWs(ws, usersConnected)
@@ -25,15 +26,20 @@ export default function chessHandler(packet: Packet, ws: WebSocket, usersConnect
       throw new Error("minutes not defined")
     }
     usersConnected[i].chess.inQeue = true
-    matchmake()
+    matchmake(usersConnected)
+
+  } else if (packet.action === "matchmakeCancel") {
+    removeConnectionFromList(usersConnected[i].ws, threeMinQeue)
+    removeConnectionFromList(usersConnected[i].ws, fiveMinQeue)
+    removeConnectionFromList(usersConnected[i].ws, tenMinQeue)
+    usersConnected[i].chess.inQeue = false
 
   } else if (packet.action === "getGamestate") {
     if (!usersConnected[i].chess.game) {
       throw new Error("not in game")
     }
-    const payload = JSON.parse(JSON.stringify(usersConnected[i].chess.game))
-    delete payload.player1.ws
-    delete payload.player2.ws
+
+    const payload = usersConnected[i].chess.game?.gameState()
 
     returnPacket = {
       id: packet.id,
@@ -46,13 +52,6 @@ export default function chessHandler(packet: Packet, ws: WebSocket, usersConnect
     if (game !== null) {
       game.validateChessMove(usersConnected[i].id, packet.payload)
       game.broadcastGamestate()
-
-      if (game.winner) {
-        let i  = indexByWs(game.player1.ws, usersConnected)
-        usersConnected[i].chess.game = null
-        i  = indexByWs(game.player2.ws, usersConnected)
-        usersConnected[i].chess.game = null
-      }
     }
   }
 

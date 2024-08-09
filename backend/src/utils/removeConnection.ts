@@ -10,7 +10,7 @@ export default function removeConnection(ws: WebSocket, usersConnected: Connecti
 }
 
 
-function removeConnectionFromList(ws: WebSocket, list: Connection[]) {
+export function removeConnectionFromList(ws: WebSocket, list: Connection[]) {
   for (let i = 0; i < list.length; i++) {
     if (list[i].ws === ws) {
       list.splice(i, 1)

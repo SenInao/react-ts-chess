@@ -12,7 +12,7 @@ const Game: React.FC = () => {
   const navigate = useNavigate()
 
   function callback(packet: Packet) {
-    if (!packet.payload.status) {
+    if (packet.payload.status === false) {
       navigate("/")
       return
     }
