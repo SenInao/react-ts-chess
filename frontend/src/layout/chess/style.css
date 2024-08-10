@@ -1,3 +1,19 @@
+.matchmaking-wait {
+  background-color: var(--primaryColor);
+  color: var(--secondaryColor);
+
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.matchmaking-wait h1 {
+  margin: 10vh;
+}
+
 .chess {
   background-color: var(--primaryColor);
   color: var(--secondaryColor);
@@ -78,7 +94,7 @@
   align-items: center;
 }
 
-.chess button {
+button {
   font-size: 1.5rem;
   padding: 1.2rem;
   margin: 1.2rem;
@@ -91,7 +107,7 @@
   transition: background-color 0.5s, color 0.5s;
 }
 
-.chess button:hover {
+button:hover {
   background-color: var(--secondaryColor);
   color: var(--primaryColor);
 }

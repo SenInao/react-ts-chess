@@ -6,14 +6,20 @@ import {tenMinQeue, fiveMinQeue, threeMinQeue, games} from "./../../states/chess
 export default function matchmake(connections: Connection[]) {
   if (threeMinQeue.length >= 2) {
     createGame(threeMinQeue[0], threeMinQeue[1], 3, connections)
+    threeMinQeue.splice(0,1)
+    threeMinQeue.splice(0,1)
   } 
 
   if (fiveMinQeue.length >= 2) {
     createGame(fiveMinQeue[0], fiveMinQeue[1], 5, connections)
+    fiveMinQeue.splice(0,1)
+    fiveMinQeue.splice(0,1)
   } 
 
   if (tenMinQeue.length >= 2) {
     createGame(tenMinQeue[0], tenMinQeue[1], 10, connections)
+    tenMinQeue.splice(0,1)
+    tenMinQeue.splice(0,1)
   }
 }
 

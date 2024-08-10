@@ -35,7 +35,7 @@ const Chess:React.FC = () => {
 
   if (matchmaking) {
     return (
-      <div className="matchmaking">
+      <div className="matchmaking-wait">
         <h1>Matchmaking ...</h1>
         <button onClick={() => cancelMatchmake()}>Cancel</button>
       </div>
@@ -49,7 +49,7 @@ const Chess:React.FC = () => {
         <button onClick={() => navigate("/")}>Back</button>
       </header>
       <div className="chess-content">
-        <section className="stats">
+        <section className="stats" style={{display: "none"}}>
           <ul>
             <h1>Previous matches</h1>
             <li>

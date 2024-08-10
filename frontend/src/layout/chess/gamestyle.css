@@ -1,8 +1,47 @@
 .ChessGame {
+  background-color: var(--primaryColor);
+  color: var(--secondaryColor);
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: row;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-evenly;
   align-items: center;
+}
+
+.clock, .runningClock{
+  font-size: 2rem;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.runningClock {
+  background-color: var(--secondaryColor);
+  color: var(--primaryColor);
+}
+
+.ChessGame section {
+  display: flex;
+  flex-direction: row;
+
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ChessGame label {
+  display: none;
+  font-size: 2rem;
+  margin-right: 20vw;
+}
+
+.back-button {
+  display: none;
+}
+
+.won-label {
+  color: green;
+}
+
+.lost-label{
+  color: red;
 }

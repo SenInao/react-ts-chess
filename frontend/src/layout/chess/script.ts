@@ -34,6 +34,16 @@ interface Mouse {
   pieceToMove : Piece | null
 }
 
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+}
+
 const BROWN = "rgba(160,82,45)"
 const LIGTH_BRWON = "rgba(196, 164, 132)"
 
@@ -43,13 +53,18 @@ export class GameClass {
   context : CanvasRenderingContext2D
   canvas : HTMLCanvasElement
   cellWidth : number
-  width : number
+  width : number = 0
   mouse : Mouse
   pieceImages: { [key: string]: HTMLImageElement }
   player : Player
   opponent : Player
+  playerClock : HTMLDivElement
+  oppClock : HTMLDivElement
+  gamestatusRef : HTMLLabelElement | undefined
+  running: boolean
+  endGameCall : () => void
 
-  constructor(ws: WS, gamestate: GameInterface, context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+  constructor(ws: WS, gamestate: GameInterface, context: CanvasRenderingContext2D, canvas: HTMLCanvasElement, playerClock : HTMLDivElement, oppClock : HTMLDivElement) {
     this.ws = ws
 
     this.handler = this.handler.bind(this)
@@ -58,9 +73,12 @@ export class GameClass {
     this.gamestate = gamestate
     this.context = context
     this.canvas = canvas
-    this.width = Math.min(window.innerWidth, window.innerHeight)*0.9
+    this.setWidth()
     this.cellWidth = this.width/8
-
+    this.playerClock = playerClock
+    this.oppClock = oppClock
+    this.running = true
+    this.endGameCall = () => {}
 
     if (this.gamestate.player1.id === ws.id) {
       this.player = this.gamestate.player1
@@ -69,6 +87,9 @@ export class GameClass {
       this.player = this.gamestate.player2
       this.opponent = this.gamestate.player1
     }
+
+    this.playerClock.innerText = formatTime(this.player.clock)
+    this.oppClock.innerText = formatTime(this.opponent.clock)
 
     if (!this.player.white) {
       this.reverseBoard()
@@ -109,12 +130,20 @@ export class GameClass {
 
 
       if (this.gamestate.winner) {
+        if (!this.gamestatusRef) {
+          return
+        }
+        this.gamestatusRef.style.display = "block"
+        this.running = false
+        this.endGameCall()
         if (this.gamestate.winner === -1) {
-          console.log("Draw")
+          this.gamestatusRef.innerText = "Draw"
         } else if (this.player.id === this.gamestate.winner) {
-          console.log("Won")
+          this.gamestatusRef.innerText = "Won"
+          this.gamestatusRef.className = "won-label"
         } else {
-          console.log("Lost")
+          this.gamestatusRef.innerText = "Lost"
+          this.gamestatusRef.className = "lost-label"
         }
       }
 
@@ -123,8 +152,15 @@ export class GameClass {
     } else if (packet.action === "chess-timerUpdate") {
       if (packet.payload.player === this.player.id) {
         this.player.clock = packet.payload.time
+        this.playerClock.innerText = formatTime(this.player.clock)
+        this.playerClock.className = "runningClock"
+        this.oppClock.className = "clock"
+
       } else {
         this.opponent.clock = packet.payload.time
+        this.oppClock.innerText = formatTime(this.opponent.clock)
+        this.oppClock.className = "runningClock"
+        this.playerClock.className = "clock"
       }
     }
   }
@@ -169,13 +205,16 @@ export class GameClass {
     })
   }
 
+  setMousePosition(event: MouseEvent) {
+    const canvasRect = this.canvas.getBoundingClientRect()
+    this.mouse.x = event.clientX - canvasRect.left
+    this.mouse.y = event.clientY - canvasRect.top
+  }
+
   initEventListeners() {
     window.addEventListener("mousedown", (event) => {
-      if (!this.player.turn) return
-
-      const canvasRect = this.canvas.getBoundingClientRect()
-      this.mouse.x = event.clientX - canvasRect.left
-      this.mouse.y = event.clientY - canvasRect.top
+      if (!this.player.turn || !this.running) return
+      this.setMousePosition(event)
       this.mouse.pressed = true
 
       const piece = this.checkCollision(this.mouse.x, this.mouse.y)
@@ -188,15 +227,14 @@ export class GameClass {
     })
 
     window.addEventListener("mouseup", (event) => {
-      if (!this.player.turn) return
-      const canvasRect = this.canvas.getBoundingClientRect()
-      this.mouse.x = event.clientX - canvasRect.left
-      this.mouse.y = event.clientY - canvasRect.top
+      if (!this.player.turn || !this.running) return
+      if (!this.mouse.pieceToMove) return
+      this.setMousePosition(event)
       this.mouse.pressed = false
 
       const piece = this.checkCollision(this.mouse.x, this.mouse.y)
 
-      if ((!piece || piece.white !== this.player.white) && this.mouse.pieceToMove) {
+      if (!piece || piece.white !== this.player.white) {
         const x = Math.floor(this.mouse.x/this.cellWidth)
         const y = Math.floor(this.mouse.y/this.cellWidth)
         var oldPos
@@ -225,13 +263,50 @@ export class GameClass {
     })
 
     window.addEventListener("mousemove", (event) => {
-      if (!this.player.turn) return
+      if (!this.player.turn || !this.running) return
       if (this.mouse.pieceToMove) {
-        const canvasRect = this.canvas.getBoundingClientRect();
-        this.mouse.x = event.clientX - canvasRect.left;
-        this.mouse.y = event.clientY - canvasRect.top;
+        this.setMousePosition(event)
       }
     });
+
+    window.addEventListener("resize", () => {
+      this.resize()
+    })
+
+    window.addEventListener("click", (event) => {
+      if (!this.player.turn || !this.running) return
+      this.setMousePosition(event)
+      const piece = this.checkCollision(this.mouse.x, this.mouse.y)
+
+      if ((!piece || piece.white !== this.player.white) && this.mouse.pieceToMove) {
+        const x = Math.floor(this.mouse.x/this.cellWidth)
+        const y = Math.floor(this.mouse.y/this.cellWidth)
+        var oldPos
+        var newPos
+
+        if (!this.player.white) {
+          oldPos = {
+            x:this.reverseValue(this.mouse.pieceToMove.pos.x),
+            y:this.reverseValue(this.mouse.pieceToMove.pos.y)
+          }
+          newPos = {
+            x:this.reverseValue(x),
+            y:this.reverseValue(y),
+          }
+          this.mouse.pieceToMove.pos = {x: x, y:y}
+        } else  {
+          oldPos = this.mouse.pieceToMove.pos
+          newPos = {x:x,y:y}
+          this.mouse.pieceToMove.pos = newPos
+        }
+
+        this.ws.send("chess-move", {oldPos: oldPos, newPos: newPos})
+      } else if (!this.mouse.pieceToMove && piece) {
+        if (this.player.white === piece.white) {
+          this.mouse.pieceToMove = piece
+        }
+      }
+    })
   }
 
   drawBoard() {
@@ -265,6 +340,7 @@ export class GameClass {
         if (!piece || piece === this.mouse.pieceToMove) continue;
 
         const img = this.pieceImages[(piece.white ? "W" : "B") + piece.type];
+        this.context.rect(piece.pos.x * this.cellWidth, piece.pos.y * this.cellWidth, 10, 10)
         this.context.drawImage(
           img,
           piece.pos.x * this.cellWidth,
@@ -279,10 +355,22 @@ export class GameClass {
   drawDraggedPiece() {
     if (this.mouse.pieceToMove) {
       const piece = this.mouse.pieceToMove;
+      this.drawPossibleMoves(piece);
       const img = this.pieceImages[(piece.white ? "W" : "B") + piece.type];
+      
+      if (!this.mouse.pressed) {
+        this.context.rect(piece.pos.x * this.cellWidth, piece.pos.y * this.cellWidth, 10, 10)
+        this.context.drawImage(
+          img,
+          piece.pos.x * this.cellWidth,
+          piece.pos.y * this.cellWidth,
+          this.cellWidth,
+          this.cellWidth
+        );
+        return
+      }
 
       this.context.beginPath();
-      this.drawPossibleMoves(piece); // Draw possible moves first
       this.context.drawImage(
         img,
         this.mouse.x - this.cellWidth / 2,
@@ -322,11 +410,29 @@ export class GameClass {
   this.drawBoard();
   this.drawPieces();
   this.drawDraggedPiece();
-}
+  }
+
   animate() {
     this.draw()
     if (this.mouse.pieceToMove && this.mouse.pressed) {
       requestAnimationFrame(() => this.animate())
     }
   }
+
+  setWidth() {
+    if (window.innerWidth < 780 && window.innerWidth < window.innerHeight*0.7) {
+      this.width = window.innerWidth
+    } else {
+      this.width = window.innerHeight * 0.7
+    }
+  }
+
+  resize() {
+    this.setWidth()
+    this.cellWidth = this.width/8
+    this.canvas.width = this.width
+    this.canvas.height = this.width
+    this.draw()
+  }
+
 }

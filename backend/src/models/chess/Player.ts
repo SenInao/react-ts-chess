@@ -28,6 +28,7 @@ export default class Player {
   }
 
   startTimer(game: Game) {
+    game.broadcast("timerUpdate", {player: this.id, time : this.clock})
     this.timerId = setInterval(() => {
       this.clock--
       game.broadcast("timerUpdate", {player: this.id, time : this.clock})

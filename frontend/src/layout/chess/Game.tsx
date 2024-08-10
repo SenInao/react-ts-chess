@@ -7,16 +7,25 @@ import { useNavigate } from "react-router-dom"
 
 const Game: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const clockRef = useRef<HTMLDivElement>(null)
+  const oppClockRef = useRef<HTMLDivElement>(null)
+  const gamestatus = useRef<HTMLLabelElement>(null)
+  const backButton = useRef<HTMLButtonElement>(null)
+
   const [gamestate, setGamestate] = useState<GameInterface | null>(null)
   const wsContext = useContext(WsContext)
   const navigate = useNavigate()
+  
+  function gameEnd() {
+    if (!backButton.current) return
+    backButton.current.style.display = "block"
+  }
 
   function callback(packet: Packet) {
     if (packet.payload.status === false) {
       navigate("/")
       return
     }
-
     const gamestate = packet.payload
     setGamestate(gamestate)
     if (!canvasRef.current) return
@@ -24,10 +33,27 @@ const Game: React.FC = () => {
     if (!context) return
     if (!gamestate) return
     if (!ws) return
-    const game = new GameClass(ws, gamestate, context, canvasRef.current)
+    if (!clockRef.current) return
+    if (!oppClockRef.current) return
+    if (!gamestatus.current) return
+    const game = new GameClass(ws, gamestate, context, canvasRef.current, clockRef.current, oppClockRef.current)
+    game.gamestatusRef = gamestatus.current
+    game.endGameCall = gameEnd
+  }
+  
+  function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    const formattedMinutes = String(minutes).padStart(2, '0');
+    const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+
+    return `${formattedMinutes}:${formattedSeconds}`;
   }
 
+
   useEffect(() => {
+    if (gamestate) return
     if (!ws) return
     if (!ws.state) {
       ws.onOpenCall = () => {
@@ -46,7 +72,19 @@ const Game: React.FC = () => {
 
   return (
     <div className="ChessGame">
+      <section>
+        <label ref={gamestatus}>Won</label>
+        <div ref={oppClockRef} className="runningClock">
+          {formatTime(0)}
+        </div>
+      </section>
       <canvas ref={canvasRef}></canvas>
+      <section>
+        <button ref={backButton} className={"back-button"} onClick={() => navigate("/")}>Back</button>
+        <div ref={clockRef} className="clock">
+          {formatTime(0)}
+        </div>
+      </section>
     </div>
   )
 }

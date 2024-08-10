@@ -1,6 +1,5 @@
 import { Connection } from "../../server";
 import { Packet } from "../../server";
-import broadcast from "../../utils/broadcast";
 import posInList from "../../utils/chess/posInList";
 import Piece, { Bishop, King, Knight, Pawn, Pos, Queen, Rook } from "./Piece";
 import Player from "./Player";
@@ -29,8 +28,8 @@ export default class Game {
 
     player1.inGame = true
     player2.inGame = true
-    player1.clock = gameDuration
-    player2.clock = gameDuration
+    player1.clock = gameDuration * 60
+    player2.clock = gameDuration * 60
 
     this.previousPos = cloneDeep(this.board)
 
@@ -245,13 +244,18 @@ export default class Game {
   }
 
   endGame() {
+    this.player1.stopTimer()
+    this.player2.stopTimer()
     let i  = indexByWs(this.player1.ws, this.connections)
-    this.connections[i].chess.game = null
-    this.connections[i].chess.inGame = false
+    if (i !== -1) {
+      this.connections[i].chess.game = null
+      this.connections[i].chess.inGame = false
+    }
     i  = indexByWs(this.player2.ws, this.connections)
-    this.connections[i].chess.game = null
-    this.connections[i].chess.inGame = false
-
+    if (i !== -1) {
+      this.connections[i].chess.game = null
+      this.connections[i].chess.inGame = false
+    }
     this.broadcastGamestate()
   }
 

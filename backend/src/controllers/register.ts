@@ -2,7 +2,7 @@ import { WebSocket } from "ws"
 import {Connection, Packet} from "./../server"
 
 function generateId(connections: Connection[]) {
-  var id = 0
+  var id = 1
   while (true) {
     for (let i = 0; i < connections.length; i++) {
       if (id === connections[i].id) {
@@ -16,6 +16,7 @@ function generateId(connections: Connection[]) {
 }
 
 export default function register(packet: Packet, ws: WebSocket, connections: Connection[]) {
+  console.log(packet)
   const connection: Connection = {
     id: generateId(connections),
     ws: ws,
