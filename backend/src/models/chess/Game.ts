@@ -133,7 +133,6 @@ export default class Game {
         const piece = this.board[y][x]
         if (!piece) continue
         if (piece.white !== player.white) continue
-
         const newLegalMoves : Pos[] = []
         piece.legalMoves.forEach(pos => {
           const move = {

@@ -144,21 +144,8 @@ export class King extends Piece {
       }
 
       let piece = game.board[posToCheck.y][posToCheck.x]
-      if (piece) {
-        if (piece.white === this.white) {
-          return
-        }
-      }
-
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          piece = game.board[y][x]
-          if (!piece) continue
-          if (piece.white === this.white) continue
-          if (posInList(posToCheck, piece.legalMoves)) {
-            return
-          }
-        }
+      if (piece && piece.white === this.white) {
+        return
       }
 
       legalMoves.push(posToCheck)
