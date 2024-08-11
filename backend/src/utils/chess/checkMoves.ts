@@ -1,5 +1,11 @@
 import Game from "../../models/chess/Game";
-import Piece from "../../models/chess/Piece";
+import Piece, { Pos } from "../../models/chess/Piece";
+
+export function outOfBounds(pos: Pos) {
+  if (pos.x < 0 || pos.x > 7) return true
+  if (pos.y < 0 || pos.y > 7) return true
+  return false
+}
 
 export function checkVerticalDir(piece: Piece, game:Game) {
   const moves = []

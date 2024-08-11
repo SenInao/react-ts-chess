@@ -402,6 +402,7 @@ export class GameClass {
   checkCollision(xPos: number, yPos: number) {
     const x = Math.floor(xPos/this.cellWidth)
     const y = Math.floor(yPos/this.cellWidth)
+    if (x < 0 || x > 7 || y < 0 || y > 7) return null
     return this.gamestate.board[y][x]
   }
 

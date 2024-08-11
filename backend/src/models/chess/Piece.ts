@@ -1,4 +1,4 @@
-import { checkDiagonals, checkHorizontalDir, checkVerticalDir } from "../../utils/chess/checkMoves"
+import { checkDiagonals, checkHorizontalDir, checkVerticalDir, outOfBounds } from "../../utils/chess/checkMoves"
 import posInList from "../../utils/chess/posInList"
 import Game from "./Game"
 
@@ -46,26 +46,39 @@ export class Pawn extends Piece {
     var legalMoves: Pos[] = []
 
     let posToCheck : Pos = {x: this.pos.x, y:this.pos.y+this.moveDir}
-    if (!game.board[posToCheck.y][posToCheck.x]) {
+    if (!outOfBounds(posToCheck) && !game.board[posToCheck.y][posToCheck.x]) {
+      if (posToCheck.y === 0 || posToCheck.y === 7) {
+        posToCheck.specialMove = "promotion"
+      }
       legalMoves.push(posToCheck)
 
       posToCheck = {x: posToCheck.x, y: posToCheck.y}
       posToCheck.y += this.moveDir
-      if (!game.board[posToCheck.y][posToCheck.x] && this.firstMove) {
+      if (this.firstMove && !game.board[posToCheck.y][posToCheck.x]) {
         legalMoves.push(posToCheck)
       }
     }
 
     posToCheck = {x: this.pos.x-1, y: this.pos.y+this.moveDir}
-    var piece = game.board[posToCheck.y][posToCheck.x]
-    if (piece && piece.white !== this.white) {
-      legalMoves.push(posToCheck)
+    if (!outOfBounds(posToCheck)) {
+      var piece = game.board[posToCheck.y][posToCheck.x]
+      if (piece && piece.white !== this.white) {
+        if (posToCheck.y === 0 || posToCheck.y === 7) {
+          posToCheck.specialMove = "promotion"
+        }
+        legalMoves.push(posToCheck)
+      }
     }
 
     posToCheck = {x: this.pos.x+1, y: this.pos.y+this.moveDir}
-    var piece = game.board[posToCheck.y][posToCheck.x]
-    if (piece && piece.white !== this.white) {
-      legalMoves.push(posToCheck)
+    if (!outOfBounds(posToCheck)) {
+      var piece = game.board[posToCheck.y][posToCheck.x]
+      if (piece && piece.white !== this.white) {
+        if (posToCheck.y === 0 || posToCheck.y === 7) {
+          posToCheck.specialMove = "promotion"
+        }
+        legalMoves.push(posToCheck)
+      }
     }
 
     if (this.white && this.pos.y === 3) {
@@ -79,14 +92,14 @@ export class Pawn extends Piece {
 
   validateEnPassant(game : Game, legalMoves : Pos[]) {
     let posToCheck : Pos = {x: this.pos.x+1, y: this.pos.y}
-    if (this.checkEnPassant(posToCheck, game)) {
+    if (!outOfBounds(posToCheck) && this.checkEnPassant(posToCheck, game)) {
       posToCheck.specialMove = "enpassant"
       posToCheck.y+=this.moveDir
       legalMoves.push(posToCheck)
     }
 
     posToCheck = {x: this.pos.x-1, y: this.pos.y}
-    if (this.checkEnPassant(posToCheck, game)) {
+    if (!outOfBounds(posToCheck) && this.checkEnPassant(posToCheck, game)) {
       posToCheck.specialMove = "enpassant"
       posToCheck.y+=this.moveDir
       legalMoves.push(posToCheck)
@@ -126,7 +139,7 @@ export class King extends Piece {
 
     moves.forEach(move => {
       const posToCheck : Pos = {x: this.pos.x + move.x, y: this.pos.y + move.y}
-      if (posToCheck.x > 7 || posToCheck.x < 0 || posToCheck.y > 7 || posToCheck.y < 0) {
+      if (outOfBounds(posToCheck)) {
         return
       }
 
@@ -166,8 +179,8 @@ export class King extends Piece {
 
   kingSideCastle(game: Game){
     if (this.firstMove) {
-      for (let x = this.pos.x+1; x < 7; x++) {
-        if (game.board[this.pos.y][x]) {
+      for (let x = this.pos.x; x < 7; x++) {
+        if (game.board[this.pos.y][x] && game.board[this.pos.y][x] !== this) {
           return false
         }
         for (let yPos = 0; yPos < 8; yPos++) {
@@ -195,8 +208,8 @@ export class King extends Piece {
 
   queenSideCastle(game: Game) {
     if (this.firstMove) {
-      for (let x = this.pos.x-1; x > 0; x--) {
-        if (game.board[this.pos.y][x]) {
+      for (let x = this.pos.x; x > 0; x--) {
+        if (game.board[this.pos.y][x] && game.board[this.pos.y][x] !== this) {
           return false
         }
 
@@ -288,7 +301,7 @@ export class Knight extends Piece {
 
     moves.forEach(move => {
       const posToCheck = {x: this.pos.x + move.x, y: this.pos.y + move.y}
-      if (posToCheck.x > 7 || posToCheck.x < 0 || posToCheck.y > 7 || posToCheck.y < 0) {
+      if (outOfBounds(posToCheck)) {
         return
       }
       const piece = game.board[posToCheck.y][posToCheck.x]

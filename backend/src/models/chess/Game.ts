@@ -72,6 +72,7 @@ export default class Game {
 
   doMove(piece: Piece, pos: Pos) {
     let pieceAtPos = this.board[pos.y][pos.x]
+
     if (pieceAtPos) {
       this.board[pos.y][pos.x] = null
 
@@ -83,12 +84,20 @@ export default class Game {
     } else if (pos.specialMove === "kingsidecastle") {
       let rook = this.board[pos.y][7]
       if (!rook) return
+      rook.firstMove = false
       this.updatePosition(rook, {x: 5, y: pos.y})
 
     } else if (pos.specialMove === "queensidecastle") {
       let rook = this.board[pos.y][0]
       if (!rook) return
+      rook.firstMove = false
       this.updatePosition(rook, {x: 3, y: pos.y})
+
+    } 
+
+    if (pos.specialMove === "promotion") {
+      this.board[piece.pos.y][piece.pos.x] = null
+      piece = new Queen(pos.x, pos.y, piece.white)
     }
 
     piece.firstMove = false
@@ -178,10 +187,11 @@ export default class Game {
     const piece = this.board[move.oldPos.y][move.oldPos.x]
 
     if (!piece) return
-    if (!this.isMoveLegal(piece, move.newPos)) return
+    const legalMove = this.getMove(piece, move.newPos)
+    if (!legalMove) return
 
     this.previousPos = cloneDeep(this.board)
-    this.doMove(piece, move.newPos)
+    this.doMove(piece, legalMove)
 
     this.player1.turn = !this.player1.turn
     this.player2.turn = !this.player2.turn
@@ -206,10 +216,10 @@ export default class Game {
     }
   }
 
-  isMoveLegal(piece: Piece, pos: Pos) {
+  getMove(piece: Piece, pos: Pos) {
     for (let m = 0; m < piece.legalMoves.length; m++) {
       if (piece.legalMoves[m].x === pos.x && piece.legalMoves[m].y === pos.y) {
-        return true
+        return piece.legalMoves[m]
       }
     }
     return false
