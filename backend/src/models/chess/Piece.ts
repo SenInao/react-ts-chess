@@ -108,11 +108,14 @@ export class Pawn extends Piece {
 
   checkEnPassant(pos: Pos, game: Game) {
     const piece = game.board[pos.y][pos.x]
-    if (piece && piece.white !== this.white) {
-      const lastPos = game.previousPos[pos.y+this.moveDir*2][pos.x]
-      if (lastPos && lastPos.firstMove) {
-        return true
-      }
+    if (piece && piece.white !== this.white && piece.type === "P") {
+      const previousMove = game.previousMoves[game.previousMoves.length-1]
+      if (
+        previousMove.newPos.x === pos.x 
+        && previousMove.newPos.y === pos.y
+        && previousMove.oldPos.x === pos.x
+        && previousMove.oldPos.y === pos.y + this.moveDir*2
+      ) return true
     }
     return false
   }
